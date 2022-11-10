@@ -1,13 +1,8 @@
 SolarAdopt <- read.csv("https://query.data.world/s/z7sgmrb66bsgxwjid6rtloauj3lq4b", header=TRUE, stringsAsFactors=FALSE);
-View(SolarAdopt)
 
 SolarConsider <- read.csv("https://query.data.world/s/h2uzczihps6wlgywy5ognxxw4bseaz", header=TRUE, stringsAsFactors=FALSE);
-View(SolarConsider)
 
 SolarSpecs <- read.csv("https://query.data.world/s/32lvde7ohhsda7rhljwd3uq5i4kre2", header=TRUE, stringsAsFactors=FALSE);
-View(SolarSpecs)
-
-head(SolarAdopt$REFERRAL_NUM)
 
 #Creating vectors with specific themes and categories to be able to visualize
 #them without other variables getting in the way. 
@@ -184,10 +179,51 @@ PromptsDF <- rbind(ADprompt2, CNprompt)
 
 View(PromptsDF)
 
+#Was prompted by R to take out all NAs due to backwards elimination
+#not working to it's full capacity. So created a new database just in case. 
+PromptsDF_NoNAs <- na.omit(PromptsDF)
+View(PromptsDF_NoNAs)
+
+
 #Now can look into doing stepwise regression 
 #Backward Elimination - Summary to start
-FitALl = lm(SPVs ~ . , data = PromptsDF)
-summary(FitALl)
+FitAll = lm(SPVs ~ PEOPLE_TOT_3PLUS + GENDER + AGE_BINNED + INCOME_BINNED +
+  RETIRED + PROMPT1+PROMPT2+PROMPT3+PROMPT4+PROMPT5+PROMPT6+
+  PROMPT7 + PROMPT8 + PROMPT9 + PROMPT10 + PROMPT11 + PROMPT12 + 
+  PROMPT13 + PROMPT14 + PROMPT15, data = PromptsDF_NoNAs)
+summary(FitAll)
 
-#Backward Elimination
-step(FitALl, direction = 'backward')
+#Backward  Elimination
+step(FitAll, direction = 'backward')
+#results: Not sure why the AIC is so large and negative.
+#Maybe due to there being more than 10 predictors. 
+
+#Because of that I am going to subset the demographics and SPVs
+#& promots and SPVs and see if that changes things. 
+KeepDemsDF_NoNAs <- c("SPVs", "CASE_ID", "STATE", "PEOPLE_TOT_3PLUS", "GENDER", "AGE_BINNED", "INCOME_BINNED","RETIRED")
+KeepPromptsDF_NoNAs <- c("SPVs", "PROMPT1", "PROMPT2", "PROMPT3", "PROMPT4", "PROMPT5", "PROMPT6",
+"PROMPT7", "PROMPT8", "PROMPT9", "PROMPT10", "PROMPT11", "PROMPT12", "PROMPT13", "PROMPT14", "PROMPT15")
+
+DemsDF_NoNAs <- PromptsDF_NoNAs[KeepDemsDF_NoNAs]
+PromptsDF_NoNAs <- PromptsDF_NoNAs[KeepPromptsDF_NoNAs]
+View(DemsDF_NoNAs)
+
+#So now that I have DemsDF_NoNAs and PromptsDF_NoNAs dataframes I am
+#going to create a new linear model to do backwards elimination and see
+#if the AIC changes in value. 
+
+#Summary of the linear model, shows which factors are significant. 
+FitAll.Dems = lm(SPVs ~ . , data = DemsDF_NoNAs)
+summary(FitAll.Dems)
+
+#Backwards elimination for Demographics only. 
+step(FitAll.Dems, direction = 'backward')
+#Results: Still had AIC that was in the thousands. 
+
+#Creating a linear model for PromptsDF_NoNAs Dataframe
+FitAll.Prompts = lm(SPVs ~ . , data = PromptsDF_NoNAs)
+summary(FitAll.Prompts)
+
+#Backward elimination for prompts only
+step(FitAll.Prompts, direction = 'backward')
+
