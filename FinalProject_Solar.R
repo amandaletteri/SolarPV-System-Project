@@ -1,5 +1,5 @@
 SolarAdopt <- read.csv("https://query.data.world/s/z7sgmrb66bsgxwjid6rtloauj3lq4b", header=TRUE, stringsAsFactors=FALSE);
-
+View(SolarAdopt)
 SolarConsider <- read.csv("https://query.data.world/s/h2uzczihps6wlgywy5ognxxw4bseaz", header=TRUE, stringsAsFactors=FALSE);
 
 SolarSpecs <- read.csv("https://query.data.world/s/32lvde7ohhsda7rhljwd3uq5i4kre2", header=TRUE, stringsAsFactors=FALSE);
@@ -168,29 +168,41 @@ CNprompt$SPVs <- myList0
 View(ADprompt)
 View(CNprompt)
 
+#Will do the same for Motives:
+ADmotives$SPVs <- myList1
+CNmotives$SPVs <- myList0
+
+View(ADmotives)
+View(CNmotives)
 #Will actually append all rows into one dataframe.
 
 #had to subset because had an additional column that CNprompt didnt have
 ADprompt2 <- subset(ADprompt, select = -c(StateR))
 View(ADprompt2)
 
+#Same proces here with ADmotives
+ADmotives2 <- subset(ADmotives, select = -c(StateR))
+View(ADmotives2)
+
 #actual code to bind 2 dataframes with same column structure
-PromptsDF <- rbind(ADprompt2, CNprompt)
+PromptsDF_Repeat <- rbind(ADprompt2, CNprompt)
+View(PromptsDF_Repeat)
 
-View(PromptsDF)
-
+MotivesDF <- rbind(ADmotives2, CNmotives)
+View(MotivesDF)
 #Was prompted by R to take out all NAs due to backwards elimination
 #not working to it's full capacity. So created a new database just in case. 
-PromptsDF_NoNAs <- na.omit(PromptsDF)
-View(PromptsDF_NoNAs)
+PromptsDF1_NoNAs <- na.omit(PromptsDF_Repeat)
+View(PromptsDF1_NoNAs)
 
-
+MotivesDF_NoNAs <- na.omit(MotivesDF)
+View(MotivesDF_NoNAs)
 #Now can look into doing stepwise regression 
 #Backward Elimination - Summary to start
 FitAll = lm(SPVs ~ PEOPLE_TOT_3PLUS + GENDER + AGE_BINNED + INCOME_BINNED +
   RETIRED + PROMPT1+PROMPT2+PROMPT3+PROMPT4+PROMPT5+PROMPT6+
   PROMPT7 + PROMPT8 + PROMPT9 + PROMPT10 + PROMPT11 + PROMPT12 + 
-  PROMPT13 + PROMPT14 + PROMPT15, data = PromptsDF_NoNAs)
+  PROMPT13 + PROMPT14 + PROMPT15, data = PromptsDF1_NoNAs)
 summary(FitAll)
 
 #Backward  Elimination
@@ -200,12 +212,12 @@ step(FitAll, direction = 'backward')
 
 #Because of that I am going to subset the demographics and SPVs
 #& promots and SPVs and see if that changes things. 
-KeepDemsDF_NoNAs <- c("SPVs", "CASE_ID", "STATE", "PEOPLE_TOT_3PLUS", "GENDER", "AGE_BINNED", "INCOME_BINNED","RETIRED")
+KeepDemsDF_NoNAs <- c("SPVs", "PEOPLE_TOT_3PLUS", "STATE", "PEOPLE_TOT_3PLUS", "GENDER", "AGE_BINNED", "INCOME_BINNED","RETIRED")
 KeepPromptsDF_NoNAs <- c("SPVs", "PROMPT1", "PROMPT2", "PROMPT3", "PROMPT4", "PROMPT5", "PROMPT6",
 "PROMPT7", "PROMPT8", "PROMPT9", "PROMPT10", "PROMPT11", "PROMPT12", "PROMPT13", "PROMPT14", "PROMPT15")
 
-DemsDF_NoNAs <- PromptsDF_NoNAs[KeepDemsDF_NoNAs]
-PromptsDF_NoNAs <- PromptsDF_NoNAs[KeepPromptsDF_NoNAs]
+DemsDF_NoNAs <- PromptsDF1_NoNAs[KeepDemsDF_NoNAs]
+PromptsDF_NoNAs <- PromptsDF1_NoNAs[KeepPromptsDF_NoNAs]
 View(DemsDF_NoNAs)
 
 #So now that I have DemsDF_NoNAs and PromptsDF_NoNAs dataframes I am
@@ -227,3 +239,102 @@ summary(FitAll.Prompts)
 #Backward elimination for prompts only
 step(FitAll.Prompts, direction = 'backward')
 
+#Will remove Considerers out of the analysis and will come back 
+#to them after the completion of the final project.
+View(PromptsDF1_NoNAs)
+#The above dataframe is the one that has demographics and prompts
+#for both considerers and adopters. 
+
+#Below I have prompted all considerer rows to be deleted and 
+#all state participants except CA. As we have narrowed down our
+#project to Adopters and California residents only. 
+PromptsCA_NoNAs <- subset(PromptsDF1_NoNAs, PromptsDF1_NoNAs$SPVs != 0 & PromptsDF1_NoNAs$STATE != 1 &
+                            PromptsDF1_NoNAs$STATE != 2 & PromptsDF1_NoNAs$STATE != 3) 
+View(PromptsCA_NoNAs)
+
+#Now can subset the demographics, prompts, motives, and personal values
+#of the adopters to run stepwise regression. 
+
+KeepDems <- c("SPVs", "STATE", "PEOPLE_TOT_3PLUS", "GENDER", "AGE_BINNED", "INCOME_BINNED","RETIRED")
+KeepPrompts <- c("SPVs","PROMPT1", "PROMPT2", "PROMPT3", "PROMPT4", "PROMPT5", "PROMPT6",
+                 "PROMPT7", "PROMPT8", "PROMPT9", "PROMPT10", "PROMPT11", "PROMPT12", "PROMPT13", "PROMPT14", "PROMPT15")
+
+DemsCA_NoNAs <- PromptsCA_NoNAs[KeepDems]
+PromptsCA1_NoNAs <-PromptsCA_NoNAs[KeepPrompts]
+
+#Run Stepwise regression with these two dataframes. HOWEVER, SPVs
+#now only has one level, which I am not sure works for regression. 
+#but will run anyway. 
+
+FitAll.DemsCA = lm(SPVs ~ . , data = DemsCA_NoNAs)
+summary(FitAll.DemsCA)
+
+step(FitAll.DemsCA, direction = 'backward')
+
+
+FitAll.PromptsCA = lm(SPVs ~ . , data = PromptsCA1_NoNAs)
+summary(FitAll.PromptsCA)
+#Results don't show anything I believ because there is only one level
+#to SPVs - Get a warning: attempting model selection on an essentially perfect fit is nonsense
+#Which I believe is due to the same. 
+
+#KeepMotives <- c("SPVs", "STATE", "PEOPLE_TOT_3PLUS", "GENDER","MOTIVE1", "MOTIVE2", "MOTIVE3", "MOTIVE4", "MOTIVE5", "MOTIVE6", "MOTIVE7",
+                # "MOTIVE8", "MOTIVE9")
+#KeepPersValues <- c("SPVs", "STATE", "PEOPLE_TOT_3PLUS", "GENDER", "AGE_BINNED", "INCOME_BINNED","RETIRED",
+                  #  "PN1", "PN2", "E2", "BB1", "BB2", "BE13", "BE10", "CIJM1", "CIJM2", "CIJM3")
+
+#3rd attempt at getting some results - Will now go back and add 
+#considerers for that point of comparison in analysis but took out all states except CA.
+
+View(PromptsDF1_NoNAs)
+PromptsCA2_NoNAs <- subset(PromptsDF1_NoNAs, PromptsDF1_NoNAs$STATE != 1 &
+                            PromptsDF1_NoNAs$STATE != 2 & PromptsDF1_NoNAs$STATE != 3) 
+View(PromptsCA2_NoNAs)
+
+#This will do the same process for MotivesDF
+MotivesDF1_NoNAs <- subset(MotivesDF_NoNAs, MotivesDF_NoNAs$STATE != 1 &
+                             MotivesDF_NoNAs$STATE != 2 & MotivesDF_NoNAs$STATE != 3) 
+View(MotivesDF1_NoNAs)
+
+#Subset the prompts and SPVs again. 
+KeepPromptsCA <- c("SPVs","PROMPT1", "PROMPT2", "PROMPT3", "PROMPT4", "PROMPT5", "PROMPT6",
+                                  "PROMPT7", "PROMPT8", "PROMPT9", "PROMPT10", "PROMPT11", "PROMPT12", "PROMPT13", "PROMPT14", "PROMPT15")
+PromptsCA3_NoNAs <-PromptsCA2_NoNAs[KeepPromptsCA]
+View(PromptsCA3_NoNAs)
+
+#Subset the motives and SPVs again. 
+KeepMotivesCA <- c("SPVs", "MOTIVE1", "MOTIVE2", "MOTIVE3", "MOTIVE4", "MOTIVE5", "MOTIVE6", "MOTIVE7",
+                    "MOTIVE8", "MOTIVE9")
+MotivesCA_NoNAs <- MotivesDF1_NoNAs[KeepMotivesCA]
+View(MotivesCA_NoNAs)
+
+#Will now try stepwise regression again with CA both adopters and considerers 
+FitAll.PromptsCA1 = lm(SPVs ~ . , data = PromptsCA3_NoNAs)
+summary(FitAll.PromptsCA1)
+
+FitAll.MotivesCA = lm(SPVs ~ . , data = MotivesCA_NoNAs)
+summary(FitAll.MotivesCA)
+
+#Backward elimination
+step(FitAll.PromptsCA1, direction = 'backward')
+#Results: It provided a best fit model with both prompt items that were 
+#most and least influencial - both statistically significant. 
+
+step(FitAll.MotivesCA, direction = 'backward')
+#This model provided 1 motive as a best fit model.Which feels moot.
+
+
+FitsomePromptsCA = lm(SPVs ~ PROMPT2 + PROMPT3 + PROMPT4 + PROMPT7 + PROMPT8 + 
+               PROMPT9 + PROMPT10 + PROMPT11 + PROMPT13 + PROMPT14 + PROMPT15, 
+             data = PromptsCA3_NoNAs)
+summary(FitsomePromptsCA)
+#Results didn't really change in that the model only explains 15% of
+#the influence on whether someone gets SPVs or not. So not very telling.
+
+FitsomeMotivesCA = lm(SPVs ~  MOTIVE2, data = MotivesCA_NoNAs)
+summary(FitsomeMotivesCA)
+#Results show that the best fit model accounts for less than 1 percent of
+#influence on having solar or not. / Could be doing something wrong. 
+
+#What if we focus on states just in adopters and use that as the 
+#dependent variable? 
