@@ -336,5 +336,39 @@ summary(FitsomeMotivesCA)
 #Results show that the best fit model accounts for less than 1 percent of
 #influence on having solar or not. / Could be doing something wrong. 
 
-#What if we focus on states just in adopters and use that as the 
-#dependent variable? 
+#What if we try logistic regression?
+library(ggplot2)
+library(lattice)
+library(dplyr)
+library(caret)
+library(magrittr)
+library(tidyr)
+library(lmtest)
+library(popbio)
+library(e1071)
+
+View(PromptsCA3_NoNAs)
+
+mylogit <- glm(SPVs ~ PROMPT14, data = PromptsCA3_NoNAs, family="binomial")
+#Chose PROMPT14 - bc approached by an installer
+
+#Create a probability for prediction.
+Probabilities <- predict(mylogit, type="response")
+PromptsCA3_NoNAs$Predicted <- ifelse(Probabilities > .5, "pos", "neg")
+PromptsCA3_NoNAs$PredictedR <- NA
+PromptsCA3_NoNAs$PredictedR [PromptsCA3_NoNAs$Predicted == 'pos'] <- 1
+PromptsCA3_NoNAs$PredictedR [PromptsCA3_NoNAs$Predicted == 'neg'] <- 0
+
+#Convert variables to factors 
+PromptsCA3_NoNAs$PredictedR <- as.factor(PromptsCA3_NoNAs$PredictedR)
+PromptsCA3_NoNAs$SPVs <- as.factor(PromptsCA3_NoNAs$SPVs)
+
+#Create a Confusion Matrix
+Conf_mat <- caret::confusionMatrix(PromptsCA3_NoNAs$PredictedR,
+                                   PromptsCA3_NoNAs$SPVs)
+Conf_mat
+#Did not meet the first assumption of at least 
+#5 items in eaach slot of the matrix    
+#RUN CORRELATION MATRIX... 
+                                   
+#What if we try chi-square?
